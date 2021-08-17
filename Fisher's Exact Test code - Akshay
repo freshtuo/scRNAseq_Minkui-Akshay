@@ -1,0 +1,248 @@
+#Need G1cells with clusters
+#Need G2M cells with clusters
+#Need S cells with clusters
+
+G1scores <- readRDS(G1scores)
+G2Mscores <- readRDS(G2Mscores)
+Sscores <- readRDS(Sscores)
+
+
+#G1 Fisher's Exact Test
+down.num <- 150
+my.times <- 100
+my.B <- 1e7
+
+resolutions <- c(1:25) * 0.1
+
+picks <- data.frame(num=c(1:down.num))
+scores <- data.frame(res=resolutions)
+for (k in c(1:my.times)){
+  cat(paste("round", k, "", sep=" "))
+  # down-sampling data
+  tpick <- sample(nrow(G1cells), down.num)
+  G1cells.subset <- G1cells[tpick,]
+  # save which samples were picked
+  tround <- paste("round", k, sep=".")
+  picks[,tround] <- tpick
+  # run fisher's exact test at each resolution using the sampled cells
+  tscores <- c()
+  
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.0.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.1.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G1cells.subset$orig.ident, y=factor(G1cells.subset$RNA_snn_res.2.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  
+  scores[,tround] <- tscores
+  cat(" ok.\n")
+}
+rownames(scores) <- paste("res", resolutions, sep=".")
+G1scoresFET <- as.data.frame(t(scores[,c(-1)]))
+
+
+
+
+
+#G2M Fisher's Exact Test
+down.num <- 150
+my.times <- 100
+my.B <- 1e7
+
+resolutions <- c(1:25) * 0.1
+
+picks <- data.frame(num=c(1:down.num))
+scores <- data.frame(res=resolutions)
+for (k in c(1:my.times)){
+  cat(paste("round", k, "", sep=" "))
+  # down-sampling data
+  tpick <- sample(nrow(G2Mcells), down.num)
+  G2Mcells.subset <- G2Mcells[tpick,]
+  # save which samples were picked
+  tround <- paste("round", k, sep=".")
+  picks[,tround] <- tpick
+  # run fisher's exact test at each resolution using the sampled cells
+  tscores <- c()
+  
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.0.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.1.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=G2Mcells.subset$orig.ident, y=factor(G2Mcells.subset$RNA_snn_res.2.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  
+  scores[,tround] <- tscores
+  cat(" ok.\n")
+}
+rownames(scores) <- paste("res", resolutions, sep=".")
+G2MscoresFET <- as.data.frame(t(scores[,c(-1)]))
+
+
+#S Fisher's Exact Test
+down.num <- 150
+my.times <- 100
+my.B <- 1e7
+
+resolutions <- c(1:25) * 0.1
+
+picks <- data.frame(num=c(1:down.num))
+scores <- data.frame(res=resolutions)
+for (k in c(1:my.times)){
+  cat(paste("round", k, "", sep=" "))
+  # down-sampling data
+  tpick <- sample(nrow(Scells), down.num)
+  Scells.subset <- Scells[tpick,]
+  # save which samples were picked
+  tround <- paste("round", k, sep=".")
+  picks[,tround] <- tpick
+  # run fisher's exact test at each resolution using the sampled cells
+  tscores <- c()
+  
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(SCells.subset$RNA_snn_res.0.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.0.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.6), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.7), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.8), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.1.9), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2.1), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2.2), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2.3), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2.4), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  result <- fisher.test(x=Scells.subset$orig.ident, y=factor(Scells.subset$RNA_snn_res.2.5), simulate.p.value=TRUE, B=my.B)
+  tscores <- c(tscores, -log10(result$p.value))
+  
+  scores[,tround] <- tscores
+  cat(" ok.\n")
+}
+rownames(scores) <- paste("res", resolutions, sep=".")
+SscoresFET <- as.data.frame(t(scores[,c(-1)]))
+
+saveRDS(G1scores, "G1scoresFET")
+saveRDS(G2Mscores, "G2MscoresFET")
+saveRDS(Sscores, "SscoresFET")
