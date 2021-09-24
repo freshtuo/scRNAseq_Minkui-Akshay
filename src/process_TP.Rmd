@@ -1,0 +1,289 @@
+---
+title: "Akshay - TP dataset"
+output: 
+  html_notebook:
+    code_folding: hide
+---
+
+Process the three samples from TP dataset:
+- QC on cells
+- perform cell-cycle analysis
+
+#### *Load R libraries*
+```{r message=FALSE, warning=FALSE}
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(tibble)
+library(magrittr)
+library(future)
+library(RColorBrewer)
+library(ggplot2)
+```
+
+#### *Set working directory*
+```{r message=FALSE, warning=FALSE}
+cohort <- 'TP_Compound'
+workdir <- '/data/gc-core/taz2008/scRNAseq/scRNAseq_Minkui-Akshay'
+sourcedir <- file.path(workdir, 'source', cohort)
+figdir <- file.path(workdir, 'figure', cohort)
+infodir <- file.path(workdir, 'info', cohort)
+```
+
+#### *Load raw UMI counts table*
+```{r message=FALSE, warning=FALSE}
+# sample info
+sample.info <- data.frame(SeqName=c("Wt_MB-231","Negative_MB-231","Active_MB-231_TPO64"), 
+                          Name=c("WT","Negative","Active"))
+rownames(sample.info) <- c("TP1","TP2","TP3")
+print(sample.info)
+
+# load UMI counts matrix
+raw.counts.list <- list()
+for (k in 1:nrow(sample.info)){
+  pid <- rownames(sample.info)[k]
+  sid <- sample.info$SeqName[k]
+  cat(paste("Loading UMI counts table for", sid, "..."))
+  # read counts csv
+  counts <- read.csv(file.path(sourcedir,sid,paste0(sid,'_dense.csv')), header=T, check.names=F, stringsAsFactors=F, row.names=1)
+  # remove 'CLUSTER' column
+  counts <- counts[,-grep('CLUSTER', colnames(counts))]
+  # add a prefix to cell id
+  rownames(counts) <- paste(pid, rownames(counts), sep='_')
+  # transpose and maintain data.frame format
+  raw.counts.list[[pid]] <- as.data.frame(t(counts))
+  cat(" done.", "\n")
+}
+
+# check matrix dimensions
+print(sapply(raw.counts.list, FUN=dim))
+
+# merge raw counts matrix
+my.MergeMatrix <- function(counts.list){
+  cat("Merge raw UMI counts ")
+  tfunc <- function(x,y){
+    tres <- merge(x, y, by=0, all=T)
+    rownames(tres) <- tres$Row.names
+    tres <- tres[,-1]
+    cat(".")
+    return(tres)
+  }
+  merged.counts <- Reduce(f=tfunc, x=counts.list)
+  # fill na with 0
+  merged.counts[is.na(merged.counts)] <- 0
+  # convert to Matrix
+  merged.counts <- as(as.matrix(merged.counts), "dgCMatrix")
+  cat(" done.", "\n")
+  return(merged.counts)
+}
+
+raw.counts.all <- my.MergeMatrix(raw.counts.list)
+
+print(dim(raw.counts.all))
+print(table(sapply(colnames(raw.counts.all), FUN=function(x) { strsplit(x,"_")[[1]][1] })))
+
+# free space
+rm(raw.counts.list)
+gc()
+```
+
+#### *Initialize a Seurat object*
+```{r message=FALSE, warning=FALSE}
+# project name
+project <- "akshay"
+
+# pattern for defining mitochondrial/ribosomal genes
+mito.pattern <- "^MT-"
+ribo.pattern <- "^RPL|^RPS"
+
+# Initialize the Seurat object with the raw (non-normalized data).
+panc <- CreateSeuratObject(counts=raw.counts.all, project=project, assay="RNA", min.cells=0, min.features=0, 
+                           names.field=1, names.delim="_", meta.data=NULL)
+
+# Calculates the mitochondrial/ribosomal genes per cell
+print(paste(length(grep(mito.pattern, rownames(panc), value=T)), "mitochondrial genes detected."))
+print(paste(length(grep(ribo.pattern, rownames(panc), value=T)), "ribosomal genes detected."))
+panc[["percent.mito"]] <- PercentageFeatureSet(panc, pattern=mito.pattern)
+panc[["percent.ribo"]] <- PercentageFeatureSet(panc, pattern=ribo.pattern)
+
+# Add sample condition
+tmeta <- data.frame(row.names=rownames(panc@meta.data))
+for (tx in colnames(sample.info)){
+  tdic <- as.vector(sample.info[,tx])
+  names(tdic) <- rownames(sample.info)
+  tmeta[,tx] <- as.vector(tdic[as.vector(panc@meta.data[,"orig.ident"])])
+}
+panc %<>% AddMetaData(metadata=tmeta)
+
+print(panc)
+```
+
+#### *QC on cells*
+```{r message=FALSE, warning=FALSE}
+# violin plot for QC purpose
+my.QC.VlnPlot <- function(tobj, tvars=c("nFeature_RNA","nCount_RNA"), tsample_by, tsample_order, tgroup_by=NULL, tgroup_order=NULL, tbounds=NULL, tjitter=T, tncol=2, tlegend=NULL, tjwidth=0.2, talpha=0.3, txsize=12, tlsize=16){
+  # get meta data for plotting
+  tdata <- FetchData(tobj, c(tsample_by,tvars))
+  colnames(tdata) <- c('Sample',tvars)
+  tdata$Sample <- factor(tdata$Sample, levels=tsample_order)
+  # assign groups if provided
+  if (! is.null(tgroup_by)){
+    tdata <- tdata %>% rownames_to_column('cellID') %>% 
+      left_join(FetchData(tobj, tgroup_by) %>% rownames_to_column('cellID'), by='cellID') %>% column_to_rownames('cellID')
+  }
+  # reorder cells by group if available
+  if (! is.null(tgroup_order)){
+    tdata[,tgroup_by] <- factor(tdata[,tgroup_by], levels=tgroup_order)
+  }
+  # list of plots: one plot per variable
+  tplots <- list()
+  tk <- 1
+  for (tvar in tvars){
+    # make plot
+    tg <- ggplot(tdata, aes_string(x="Sample", y=tvar))
+    if (! is.null(tgroup_by)){
+      tg <- ggplot(tdata, aes_string(x="Sample", y=tvar, fill=tgroup_by))
+    }
+    tg <- tg + geom_violin()
+    if(tjitter){
+      tg <- tg + geom_jitter(aes_string(color=tgroup_by), shape=16, position=position_jitter(width=tjwidth, height=0), alpha=talpha)
+    }
+    tg <- tg + stat_summary(fun.data=median_hilow, geom="pointrange", color="gray75")
+    if (! is.null(tbounds)){
+      if (! is.null(tbounds[[tvar]])){
+        tg <- tg + geom_hline(yintercept=tbounds[[tvar]], colour='red', linetype='dotted')
+      }
+    }
+    tg <- tg + ggtitle(tvar)
+    tg <- tg + theme_bw()
+    tg <- tg + theme(axis.title=element_blank(), axis.text.x=element_text(size=txsize, angle=45, hjust=1, face="bold"))
+    tg <- tg + theme(axis.text.y=element_text(size=txsize, face="bold"), plot.title=element_text(size=tlsize, hjust=0.5, face="bold"))
+    # add to plot list
+    tplots[[tk]] <- tg
+    tk <- tk + 1
+  }
+  # combine plots with Seurat::CombinePlots
+  tcombined <- CombinePlots(tplots, ncol=tncol, legend=tlegend)
+  return(tcombined)
+}
+
+# QC on nFeature_RNA + nCount_RNA + percent.mito
+myCellQC <- function(tobj, tfeature.var='nFeature_RNA', tcount.var='nCount_RNA', tmito.var='percent.mito', tsample_by='orig.ident', tsample_order=NULL, tbounds=NULL, talpha=0.5, tptsize=2){
+  # orig.ident nCount_RNA nFeature_RNA percent.mito
+  tdata <- FetchData(tobj, vars=c(tsample_by,tfeature.var,tcount.var,tmito.var))
+  # order samples if provided
+  if (! is.null(tsample_order)){
+    tdata[,tsample_by] = factor(tdata[,tsample_by], levels=tsample_order)
+  }
+  colnames(tdata) <- c('Sample',tfeature.var,tcount.var,tmito.var)
+  # order data by percent.mito
+  tdata <- tdata[with(tdata, order(tdata[,tmito.var])), ]
+  # plot
+  tg <- ggplot(tdata, aes_string(x=tfeature.var, y=tcount.var, color=tmito.var))
+  tg <- tg + geom_point(shape=19, alpha=talpha, size=tptsize)
+  tg <- tg + scale_color_gradient(breaks=c(0,25,50,75,100), limits=c(0,100))
+  if (! is.null(tbounds)){
+    tg <- tg + geom_hline(yintercept=tbounds[[tcount.var]], colour='red', linetype='dotted')
+    tg <- tg + geom_vline(xintercept=tbounds[[tfeature.var]], colour='red', linetype='dotted')
+  }
+  tg <- tg + facet_wrap(~Sample)
+  tg <- tg + theme_bw()
+  tg <- tg + theme(axis.title=element_text(size=18, color='black'), axis.text=element_text(size=16, color='black'))
+  return(tg)
+}
+
+# cell numbers before filtering
+print('Before filtering:')
+print(table(panc$Name))
+
+# pre-filter QC
+# violin plot
+plot <- my.QC.VlnPlot(tobj=panc, tvars=c("nFeature_RNA", "nCount_RNA", "percent.mito", "percent.ribo"), 
+                      tsample_by='Name', tsample_order=c('WT','Negative','Active'), 
+                      tgroup_by='Name', tgroup_order=c('WT','Negative','Active'), tbounds=NULL,
+                      tjitter=T, tncol=2, tlegend="bottom", tjwidth=0.2, talpha=0.1, txsize=12, tlsize=16)
+ggsave(paste(figdir, "QC.Violin.pre-filter.png", sep="/"), width=10, height=8, dpi=600)
+# scatter plot
+plots <- list()
+plots[[1]] <- FeatureScatter(panc, feature1="nFeature_RNA", feature2="nCount_RNA")
+plots[[2]] <- FeatureScatter(panc, feature1="nCount_RNA", feature2="percent.mito")
+plots[[3]] <- FeatureScatter(panc, feature1="nFeature_RNA", feature2="percent.ribo")
+plots[[4]] <- FeatureScatter(panc, feature1="percent.mito", feature2="percent.ribo")
+plots.combined <- CombinePlots(plots=plots, ncol=2)
+print(plots.combined)
+ggsave(paste(figdir, "QC.Scatter.pre-filter.png", sep="/"), width=12, height=10, dpi=600)
+# quick QC on nGene X nUMI X percent.mito
+plot <- myCellQC(tobj=panc, tfeature.var='nFeature_RNA', tcount.var='nCount_RNA', tmito.var='percent.mito', 
+                 tsample_by='Name', tsample_order=c('WT','Negative','Active'),
+                 tbounds=NULL, talpha=0.5, tptsize=2)
+ggsave(paste(figdir, "QC.Cells.pre-filter.png", sep="/"), plot=plot, width=14.5, height=5, dpi=600)
+
+# filters: nGene > 2000, nGene <= 8000, nUMI > 4000, nUMI <= 90000, percent.mito < 15%
+ncells <- nrow(subset(panc@meta.data, nFeature_RNA > 2000 & nFeature_RNA <= 8000 & 
+                        nCount_RNA > 4000 & nCount_RNA <= 90000 & percent.mito < 15))
+print(paste(round((1 - ncells/ncol(panc))*100, 2), "cells will be removed."))
+
+# re-plot with cutoff labeled in plots
+plot <- my.QC.VlnPlot(tobj=panc, tvars=c("nFeature_RNA", "nCount_RNA", "percent.mito", "percent.ribo"), 
+                      tsample_by='Name', tsample_order=c('WT','Negative','Active'), 
+                      tgroup_by='Name', tgroup_order=c('WT','Negative','Active'), 
+                      tbounds=list(nFeature_RNA=c(2000,8000),nCount_RNA=c(4000,90000),percent.mito=c(15),percent.virus=NULL,percent.ribo=NULL),
+                      tjitter=T, tncol=2, tlegend="bottom", tjwidth=0.2, talpha=0.1, txsize=12, tlsize=16)
+print(plot)
+ggsave(paste(figdir, "QC.Violin.pre-filter.with_cutoff.png", sep="/"), width=10, height=8, dpi=600)
+
+plot <- myCellQC(tobj=panc, tfeature.var='nFeature_RNA', tcount.var='nCount_RNA', tmito.var='percent.mito', 
+                 tsample_by='Name', tsample_order=c('WT','Negative','Active'),
+                 tbounds=list(nFeature_RNA=c(2000,8000),nCount_RNA=c(4000,90000),percent.mito=c(15)), talpha=0.5, tptsize=2)
+print(plot)
+ggsave(paste(figdir, "QC.Cells.pre-filter.with_cutoff.png", sep="/"), plot=plot, width=14.5, height=5, dpi=600)
+
+# perform cell filtering
+# nGene > 2000, nGene <= 8000, nUMI > 4000, nUMI <= 90000, percent.mito < 15%
+panc %<>% subset(subset=nFeature_RNA > 2000 & nFeature_RNA <= 8000 & nCount_RNA > 4000 & nCount_RNA <= 90000 & percent.mito < 15)
+
+# cell numbers after filtering
+print('After filtering:')
+print(table(panc$Name))
+
+# post-filter QC
+# violin plot
+plot <- my.QC.VlnPlot(tobj=panc, tvars=c("nFeature_RNA", "nCount_RNA", "percent.mito", "percent.ribo"), 
+                      tsample_by='Name', tsample_order=c('WT','Negative','Active'), 
+                      tgroup_by='Name', tgroup_order=c('WT','Negative','Active'), tbounds=NULL,
+                      tjitter=T, tncol=2, tlegend="bottom", tjwidth=0.2, talpha=0.1, txsize=12, tlsize=16)
+print(plot)
+ggsave(paste(figdir, "QC.Violin.post-filter.png", sep="/"), width=10, height=8, dpi=600)
+# scatter plot
+plots <- list()
+plots[[1]] <- FeatureScatter(panc, feature1="nFeature_RNA", feature2="nCount_RNA")
+plots[[2]] <- FeatureScatter(panc, feature1="nCount_RNA", feature2="percent.mito")
+plots[[3]] <- FeatureScatter(panc, feature1="nFeature_RNA", feature2="percent.ribo")
+plots[[4]] <- FeatureScatter(panc, feature1="percent.mito", feature2="percent.ribo")
+plots.combined <- CombinePlots(plots=plots, ncol=2)
+print(plots.combined)
+ggsave(paste(figdir, "QC.Scatter.post-filter.png", sep="/"), width=12, height=10, dpi=600)
+# quick QC on nGene X nUMI X percent.mito
+plot <- myCellQC(tobj=panc, tfeature.var='nFeature_RNA', tcount.var='nCount_RNA', tmito.var='percent.mito', 
+                 tsample_by='Name', tsample_order=c('WT','Negative','Active'),
+                 tbounds=NULL, talpha=0.5, tptsize=2)
+print(plot)
+ggsave(paste(figdir, "QC.Cells.post-filter.png", sep="/"), plot=plot, width=14.5, height=5, dpi=600)
+
+# free space
+rm(plot, plots, plots.combined)
+gc()
+
+# save Seurat object (initial)
+saveRDS(panc, file=file.path(infodir, "panc.rds"))
+```
+
+#### *Normalize, Find variable genes, scale data, and perform PCA*
+```{r message=FALSE, warning=FALSE}
+
+```
+
+#### *R packages information*
+```{r message=FALSE, warning=FALSE}
+sessionInfo()
+```
