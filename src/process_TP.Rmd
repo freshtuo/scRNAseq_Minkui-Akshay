@@ -329,9 +329,6 @@ for (k in 1:10){
 #ElbowPlot(panc, ndims=30, reduction="pca")
 #dev.off()
 ElbowPlot(panc, ndims=30, reduction="pca")
-
-# save Seurat object (initial)
-saveRDS(panc, file=file.path(infodir, "panc.rds"))
 ```
 
 #### *Assign cell cycle*
@@ -346,6 +343,9 @@ print(FetchData(panc, vars=c('Name','Phase')) %>% group_by(Name, Phase) %>% summ
 
 # Visualize the distribution of cell cycle markers across
 RidgePlot(panc, features=c("PCNA", "TOP2A", "MCM6", "MKI67"), ncol=2)
+
+# save Seurat object (initial)
+saveRDS(panc, file=file.path(infodir, "panc.rds"))
 ```
 
 #### *R packages information*
