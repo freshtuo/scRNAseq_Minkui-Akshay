@@ -348,6 +348,34 @@ RidgePlot(panc, features=c("PCNA", "TOP2A", "MCM6", "MKI67"), ncol=2)
 saveRDS(panc, file=file.path(infodir, "panc.rds"))
 ```
 
+#### *Review cell cycle assignment*
+```{r message=FALSE, warning=FALSE}
+# minimum & maximum cell cycle scores
+print(min(panc@meta.data$S.Score, panc@meta.data$G2M.Score))
+print(max(panc@meta.data$S.Score, panc@meta.data$G2M.Score))
+
+# score distribution
+print('G2M.Score vs. S.Score')
+# G2M v.s. S
+plot <- ggplot(panc@meta.data, aes(x=G2M.Score, y=S.Score, color=Phase)) + 
+  geom_point(shape=19, size=2, alpha=0.6) + 
+  coord_fixed(xlim=c(-0.45,1.35),ylim=c(-0.45,1.35)) + theme_bw()
+ggsave(file.path(figdir, 'scatter.G2M.vs.S.png'), plot=plot, width=6, height=5.5, dpi=300)
+print(plot)
+
+# G2M
+print('G2M.Score')
+plot <- ggplot(panc@meta.data, aes(x=G2M.Score)) + geom_histogram(binwidth=0.01) + theme_bw()
+ggsave(file.path(figdir, 'histogram.G2M.png'), plot=plot, width=6, height=3.5, dpi=300)
+print(plot)
+
+# S
+print('S.Score')
+plot <- ggplot(panc@meta.data, aes(x=S.Score)) + geom_histogram(binwidth=0.01) + theme_bw()
+ggsave(file.path(figdir, 'histogram.G2M.png'), plot=plot, width=6, height=3.5, dpi=300)
+print(plot)
+```
+
 #### *R packages information*
 ```{r message=FALSE, warning=FALSE}
 sessionInfo()
