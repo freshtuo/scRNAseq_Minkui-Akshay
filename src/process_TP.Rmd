@@ -273,14 +273,79 @@ ggsave(paste(figdir, "QC.Cells.post-filter.png", sep="/"), plot=plot, width=14.5
 # free space
 rm(plot, plots, plots.combined)
 gc()
+```
+
+#### *Normalize, Find variable genes, scale data, perform PCA*
+```{r message=FALSE, warning=FALSE}
+# normalize data
+panc %<>% NormalizeData()
+
+# find variable genes
+panc %<>% FindVariableFeatures(selection.method="vst", nfeatures=2000)
+
+# scale data
+panc %<>% ScaleData()
+
+# highlight the 10 most highly variable genes
+top10 <- head(VariableFeatures(panc), 10)
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(panc)
+plot2 <- LabelPoints(plot=plot1, points=top10, repel=TRUE)
+# Warning: When using repel, set xnudge and ynudge to 0 for optimal results
+png(file=paste(figdir, "VariableFeaturePlot.png", sep="/"), width=8000, height=2400, units="px", pointsize=6, res=600)
+CombinePlots(plots = list(plot1, plot2))
+dev.off()
+rm(plot1)
+rm(plot2)
+
+# extract the top positive/negative affected genes in one PC
+myGetTopPCFeatures <- function(tobj, reduction.name="pca", reduction.key="PC_", pc=1, nfeatures=5){
+  # valid assay?
+  if (! reduction.name %in% names(tobj)){
+    print(paste("Invalid","assay:",reduction.name, sep=" "))
+    return(NULL)
+  }
+  # get values in the given PC
+  tvals <- as.vector(tobj[[reduction.name]]@feature.loadings[, paste(reduction.key, pc, sep="")])
+  names(tvals) <- rownames(tobj[[reduction.name]]@feature.loadings)
+  # order the genes
+  tvals.sorted <- sort(tvals)
+  # output
+  cat("PC_", pc, ":\n", sep="")
+  cat(c("Positive:", head(names(rev(tvals.sorted)), nfeatures), "\n"), sep=" ")
+  cat(c("Negative:", head(names(tvals.sorted), nfeatures) ,"\n"), sep=" ")
+}
+
+# perform PCA
+panc %<>% RunPCA()
+# use my own function to extract the top positive/negative affected genes in one PC
+for (k in 1:10){
+  myGetTopPCFeatures(panc, pc=k)
+}
+
+# An alternative heuristic method generates an 'Elbow plot':
+# a ranking of principle components based on the percentage of variance explained by each one (ElbowPlot function). 
+#png(file=file.path(figdir, "PCElbowPlot.png"), width=1600, height=1600, units="px", pointsize=6, res=600)
+#ElbowPlot(panc, ndims=30, reduction="pca")
+#dev.off()
+ElbowPlot(panc, ndims=30, reduction="pca")
 
 # save Seurat object (initial)
 saveRDS(panc, file=file.path(infodir, "panc.rds"))
 ```
 
-#### *Normalize, Find variable genes, scale data, and perform PCA*
+#### *Assign cell cycle*
 ```{r message=FALSE, warning=FALSE}
+# Assign Cell-Cycle Scores
+panc %<>% CellCycleScoring(s.features=cc.genes$s.genes, g2m.features=cc.genes$g2m.genes, set.ident=TRUE)
 
+# how many cells per cell cycle phase?
+print('Number of cells per cell cycle phase per sample:')
+print(FetchData(panc, vars=c('Name','Phase')) %>% group_by(Name, Phase) %>% summarise_at('Phase', list(counts=length)) 
+      %>% group_by(Name) %>% mutate(percent=round(counts/sum(counts)*100,1)))
+
+# Visualize the distribution of cell cycle markers across
+RidgePlot(panc, features=c("PCNA", "TOP2A", "MCM6", "MKI67"), ncol=2)
 ```
 
 #### *R packages information*
