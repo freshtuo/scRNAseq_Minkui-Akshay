@@ -376,6 +376,107 @@ ggsave(file.path(figdir, 'histogram.G2M.png'), plot=plot, width=6, height=3.5, d
 print(plot)
 ```
 
+#### *Dimension reduction and clustering*
+```{r message=FALSE, warning=FALSE}
+# top PCs for downstream analysis
+pcs <- 20
+
+# FindNeighbors: Shared Nearest Neighbor(SNN) Graph Construction
+panc %<>% FindNeighbors(reduction="pca", dims=1:pcs)
+
+# FindClusters
+panc %<>% FindClusters(resolution=seq(0.05,4,by=0.05), verbose=T)
+
+# dimension reduction using tSNE
+panc %<>% RunTSNE(reduction="pca", dims = 1:pcs, seed.use=1, tsne.method="Rtsne", dim.embed=3)
+```
+
+#### *check cell compositions per cluster per sample*
+```{r message=FALSE, warning=FALSE, fig.width=18, fig.height=15, dpi=300}
+# bar plot showing the percentage of cells per cluster in each group, split by clusters
+myBarCellCompositionSplit <- function(tobj, tcluster_by='ident', tcluster_order, tgroup_by='Name', tgroup_order=NULL, tcells=NULL, tanncolor=NULL, ttlsize=28, ttxsize=24, tltsize=18, tsxsize=16){
+  # calculate percentage of cells per cluster in each group
+  tpercent <- FetchData(tobj, vars=c(tgroup_by, tcluster_by), cells=tcells) %>% dplyr::rename('Cluster'=tcluster_by, 'Group'=tgroup_by) %>%
+    rownames_to_column('CellID') %>% group_by(Group, Cluster) %>% summarise_at('CellID', length) %>%
+    tidyr::complete(Cluster=factor(tcluster_order), fill=list(CellID=0)) %>%
+    group_by(Group) %>% mutate_at('CellID', function(x) { round(x/sum(x)*100,2) })
+  colnames(tpercent) <- c("Group", "Cluster", "Percent")
+  # reorder group/cluster if provided
+  if (! is.null(tcluster_order)){
+    tpercent$Cluster <- factor(tpercent$Cluster, levels=tcluster_order)
+  }
+  if (! is.null(tgroup_order)){
+    tpercent$Group <- factor(tpercent$Group, levels=tgroup_order)
+  }
+  # plot
+  tg <- ggplot(tpercent, aes(x=Group, y=Percent, fill=Cluster))
+  tg <- tg + geom_bar(stat='identity')
+  tg <- tg + facet_wrap(~Cluster, scales='free_y')
+  if (! is.null(tanncolor)){
+    tg <- tg + scale_fill_manual(values=tanncolor)
+  }
+  tg <- tg + ylab('Percentage of cells')
+  tg <- tg + theme_bw()
+  tg <- tg + theme(axis.title.x=element_blank(), axis.title.y=element_text(color='black', size=ttlsize))
+  tg <- tg + theme(axis.text.x=element_text(color='black', size=ttxsize, angle=60, hjust=1), axis.text.y=element_text(color='black', size=ttxsize))
+  tg <- tg + theme(strip.text.x=element_text(color='black', size=tsxsize))
+  tg <- tg + theme(legend.text=element_text(size=tltsize), legend.title=element_blank())
+  return(tg)
+}
+
+# bar plot showing the absolute number of cells per cluster in each group, split by clusters
+myBarCellNumberSplit <- function(tobj, tcluster_by='ident', tcluster_order, tgroup_by='Name', tgroup_order=NULL, tcells=NULL, tanncolor=NULL, ttlsize=28, ttxsize=24, tltsize=18, tsxsize=16){
+  # calculate absolute number of cells per cluster in each group
+  tpercent <- FetchData(tobj, vars=c(tgroup_by, tcluster_by), cells=tcells) %>% dplyr::rename('Cluster'=tcluster_by, 'Group'=tgroup_by) %>%
+    rownames_to_column('CellID') %>% group_by(Group, Cluster) %>% summarise_at('CellID', length) %>%
+    tidyr::complete(Cluster=factor(tcluster_order), fill=list(CellID=0))
+  colnames(tpercent) <- c("Group", "Cluster", "Number")
+  # reorder group/cluster if provided
+  if (! is.null(tcluster_order)){
+    tpercent$Cluster <- factor(tpercent$Cluster, levels=tcluster_order)
+  }
+  if (! is.null(tgroup_order)){
+    tpercent$Group <- factor(tpercent$Group, levels=tgroup_order)
+  }
+  # plot
+  tg <- ggplot(tpercent, aes(x=Group, y=Number, fill=Cluster))
+  tg <- tg + geom_bar(stat='identity')
+  tg <- tg + facet_wrap(~Cluster, scales='free_y')
+  if (! is.null(tanncolor)){
+    tg <- tg + scale_fill_manual(values=tanncolor)
+  }
+  tg <- tg + ylab('Absolute number of cells')
+  tg <- tg + theme_bw()
+  tg <- tg + theme(axis.title.x=element_blank(), axis.title.y=element_text(color='black', size=ttlsize))
+  tg <- tg + theme(axis.text.x=element_text(color='black', size=ttxsize, angle=60, hjust=1), axis.text.y=element_text(color='black', size=ttxsize))
+  tg <- tg + theme(strip.text.x=element_text(color='black', size=tsxsize))
+  tg <- tg + theme(legend.text=element_text(size=tltsize), legend.title=element_blank())
+  return(tg)
+}
+
+# set color
+my.cluster.color <- c(brewer.pal(12,'Paired'), brewer.pal(8,'Set2'), brewer.pal(9,'Pastel1'), brewer.pal(12,'Set3'))
+names(my.cluster.color) <- c(0:40)
+
+my.resolution <- 4
+my.numclusters <- length(unique(panc[[paste0('RNA_snn_res.',my.resolution)]][,1]))
+
+# bar plot per sample, separated by clusters
+g <- myBarCellCompositionSplit(panc, tcluster_by=paste0('RNA_snn_res.',my.resolution), tcluster_order=0:(my.numclusters-1), tgroup_by='Name', 
+                               tgroup_order=c('WT','Negative','Active'), 
+                               tcells=NULL, tanncolor=my.cluster.color, ttlsize=20, ttxsize=18, tltsize=16, tsxsize=14)
+##ggsave(file.path(figdir, 'percentage.cells.by_sample.split.png'), plot=g, width=20, height=16)
+print(g)
+
+# generate bar plot, showing absolute number of cells per cluster in each sample
+g <- myBarCellNumberSplit(panc, tcluster_by=paste0('RNA_snn_res.',my.resolution), tcluster_order=0:(my.numclusters-1), tgroup_by='Name', 
+                          tgroup_order=c('WT','Negative','Active'), 
+                          tcells=NULL, tanncolor=my.cluster.color, ttlsize=20, ttxsize=18, tltsize=16, tsxsize=14)
+print(g)
+##ggsave(file.path(figdir, 'number.cells.by_sample.split.png'), plot=g, width=20, height=16)
+
+```
+
 #### *R packages information*
 ```{r message=FALSE, warning=FALSE}
 sessionInfo()
